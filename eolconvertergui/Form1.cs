@@ -36,16 +36,20 @@ namespace eolconvertergui
             }
         }
 
-        public bool addFile(string path)
+        public bool addFile(string path, int index = -1, bool ignoreext = false)
         {
             if (File.Exists(path))
             {
-                string[] extensions = new string[] { ".php", ".css", ".html", ".htm", ".js", ".txt", ".htaccess", ".gitattributes", ".gitignore", ".xml", ".sql" };
-                if (Array.IndexOf(extensions, Path.GetExtension(path)) >= 0)
+                
+                string[] extensions = new string[] { ".php", ".css", ".html", ".htm", ".js", ".txt", ".htaccess", ".gitattributes", ".gitignore", ".xml", ".sql", ".xsl" };
+                if (Array.IndexOf(extensions, Path.GetExtension(path)) >= 0 || ignoreext)
                 {
-                    int index = this.fileslist.Items.Add(Path.GetFileName(path)).Index;
-                    this.fileslist.Items[index].SubItems.Add(Path.GetFullPath(path));
-                    this.fileslist.Items[index].SubItems.Add("В очереди");
+                    if (index == -1)
+                    {
+                        index = this.fileslist.Items.Add(Path.GetFileName(path)).Index;
+                        this.fileslist.Items[index].SubItems.Add(Path.GetFullPath(path));
+                        this.fileslist.Items[index].SubItems.Add("В очереди");
+                    }
                     FileItem fi = new FileItem();
                     fi.Index = index;
                     fi.Filename = path;
@@ -69,9 +73,14 @@ namespace eolconvertergui
 
         private void addfile_Click(object sender, EventArgs e)
         {
+            selectFile.Filter = "Текстовые файлы|*.php;*.css,*.html;*.htm;*.js;*.txt;*.htaccess;*.gitattributes;*.gitignore;*.xml;*.sql;*.c;*.cpp;*.h;*.cs;*.sln;*.xsl;*.ini|Все файлы|*.*";
+            selectFile.Multiselect = true;
             if (selectFile.ShowDialog() == System.Windows.Forms.DialogResult.OK)
             {
-                addFile(selectFile.FileName);
+                foreach (String file in selectFile.FileNames)
+                {
+                    addFile(file, -1, true);
+                }
             }
         }
 
@@ -130,8 +139,65 @@ namespace eolconvertergui
 
         private void toolStripButton3_Click(object sender, EventArgs e)
         {
-            System.Windows.Forms.MessageBox.Show("EOL Converter преобразует окончания строк в CRLF или LF.\nСайт автора: http://mobyman.org.\nGithub: https://github.com/mobyman.", "О программе");
+            MessageBox.Show("EOL Converter преобразует окончания строк в CRLF или LF.\nСайт автора: http://mobyman.org.\nGithub: https://github.com/mobyman.", "О программе");
         }
+
+        private void fileslist_KeyDown(object sender, KeyEventArgs e)
+        {
+            Keys code = e.KeyCode;
+            if (code == Keys.Delete || code == Keys.Insert)
+            {
+                foreach (ListViewItem item in fileslist.SelectedItems)
+                {
+                    if (item.SubItems[2].Text != "OK")
+                    {
+                        if (code == Keys.Delete && item.SubItems[2].Text != "Исключен")
+                        {
+                            for (int i = 0; i < allFileList.Count; i++)
+                            {
+                                if (allFileList[i].Index.ToString() == item.Index.ToString())
+                                {
+                                    allFileList.RemoveAt(i);
+                                    item.ForeColor = Color.Gray;
+                                    item.SubItems[2].Text = "Исключен";
+                                }
+                            }
+                        }
+
+                        if (code == Keys.Insert && item.SubItems[2].Text != "В очереди")
+                        {
+                            addFile(item.SubItems[1].Text, Int32.Parse(item.Index.ToString()));
+                            item.ForeColor = Color.Black;
+                            item.SubItems[2].Text = "В очереди";
+                        }
+                    }
+                }
+            }
+            if (e.Modifiers == Keys.Control && code == Keys.A)
+            {
+                foreach (ListViewItem item in fileslist.Items)
+                {
+                    item.Selected = true;
+                }
+            }
+            if (code == Keys.Escape)
+            {
+                foreach (ListViewItem item in fileslist.Items)
+                {
+                    item.Selected = false;
+                }
+            }
+            if (code == Keys.Space)
+            {
+                foreach (ListViewItem item in fileslist.Items)
+                {
+                    item.Selected = !item.Selected;
+                    item.Focused = false;
+                }
+
+            }
+        }
+       
     }
 
     public class FileItem
